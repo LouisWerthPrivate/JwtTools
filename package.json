@@ -1,0 +1,73 @@
+{
+  "name": "jwt-tools",
+  "displayName": "JWT Tools",
+  "description": "Decode, inspect, verify and create JWT tokens — all inside VS Code.",
+  "version": "1.0.2",
+  "publisher": "jwt-tools",
+  "author": "Louis Werth",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "jwt",
+    "json web token",
+    "decode",
+    "auth",
+    "oauth",
+    "security"
+  ],
+  "activationEvents": [
+    "onCommand:jwt-tools.openPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jwt-tools.openPanel",
+        "title": "JWT Tools: Open Panel",
+        "category": "JWT Tools"
+      },
+      {
+        "command": "jwt-tools.decodeSelection",
+        "title": "JWT Tools: Decode Selected Token",
+        "category": "JWT Tools"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "jwt-tools.openPanel",
+        "key": "ctrl+shift+j",
+        "mac": "cmd+shift+j"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "jwt-tools.decodeSelection",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.x",
+    "@typescript-eslint/parser": "^7.x",
+    "eslint": "^8.x",
+    "typescript": "^5.3.x"
+  }
+}

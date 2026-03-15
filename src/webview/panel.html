@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>JWT Tools</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --jwt-red:     #fb015b;
+    --jwt-purple:  #d63aff;
+    --jwt-cyan:    #00b9f1;
+    --jwt-red-dim:    rgba(251, 1, 91,  0.12);
+    --jwt-purple-dim: rgba(214, 58, 255, 0.12);
+    --jwt-cyan-dim:   rgba(0,  185, 241, 0.12);
+    --success:  #4caf82;
+    --danger:   #f44747;
+    --warning:  #e2a03f;
+    --radius:   6px;
+    --radius-lg: 10px;
+    --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  body {
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    font-size: 13px;
+    background: var(--vscode-editor-background, #1e1e1e);
+    color: var(--vscode-editor-foreground, #d4d4d4);
+    min-height: 100vh;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ── Layout ────────────────────────────────────────────────────── */
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 0 40px;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────── */
+  .app-header {
+    background: var(--vscode-titleBar-activeBackground, #2d2d2d);
+    border-bottom: 1px solid var(--vscode-panel-border, #404040);
+    padding: 14px 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .app-header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .app-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--jwt-red), var(--jwt-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 11px;
+    color: white;
+    letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+
+  .app-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--vscode-titleBar-activeForeground, #fff);
+    letter-spacing: -0.3px;
+  }
+
+  .app-subtitle {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #999);
+    margin-left: auto;
+  }
+
+  /* ── Tabs ──────────────────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    padding: 8px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--vscode-foreground, #ccc);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .tab-btn:hover { background: var(--vscode-toolbar-hoverBackground, rgba(255,255,255,0.06)); }
+  .tab-btn.active {
+    color: var(--vscode-tab-activeForeground, #fff);
+    border-bottom-color: var(--jwt-cyan);
+    background: var(--vscode-editor-background, #1e1e1e);
+  }
+  .tab-btn svg { margin-right: 6px; vertical-align: -2px; }
+
+  /* ── Tab panels ────────────────────────────────────────────────── */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.15s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ── Cards ─────────────────────────────────────────────────────── */
+  .card {
+    background: var(--vscode-sideBar-background, #252526);
+    border: 1px solid var(--vscode-panel-border, #404040);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--vscode-editorGroupHeader-tabsBackground, #2d2d2d);
+    border-bottom: 1px solid var(--vscode-panel-border, #404040);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--vscode-descriptionForeground, #888);
+  }
+
+  .card-body { padding: 14px; }
+
+  /* ── Grid layouts ──────────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Decoder page ──────────────────────────────────────────────── */
+  #decoder-page { padding: 16px 20px; }
+
+  .decoder-input-area {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .decoder-input-area label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--vscode-descriptionForeground, #888);
+    margin-bottom: 8px;
+  }
+
+  .input-badge {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .badge-encoded { background: var(--jwt-red-dim); color: var(--jwt-red); border: 1px solid var(--jwt-red); }
+  .badge-success { background: rgba(76,175,130,0.15); color: var(--success); border: 1px solid var(--success); }
+  .badge-error   { background: rgba(244,71,71,0.15); color: var(--danger); border: 1px solid var(--danger); }
+  .badge-warn    { background: rgba(226,160,63,0.15); color: var(--warning); border: 1px solid var(--warning); }
+  .badge-gray    { background: rgba(128,128,128,0.15); color: #888; border: 1px solid #555; }
+
+  textarea, input[type="text"], input[type="password"], select {
+    width: 100%;
+    background: var(--vscode-input-background, #3c3c3c);
+    border: 1px solid var(--vscode-input-border, #555);
+    border-radius: var(--radius);
+    color: var(--vscode-input-foreground, #d4d4d4);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 10px 12px;
+    resize: vertical;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  textarea:focus, input[type="text"]:focus, input[type="password"]:focus, select:focus {
+    border-color: var(--vscode-focusBorder, #007fd4);
+  }
+  textarea.jwt-textarea { min-height: 100px; word-break: break-all; font-size: 12px; line-height: 1.7; }
+  textarea.has-error { border-color: var(--danger) !important; }
+  select { cursor: pointer; }
+  select option { background: var(--vscode-dropdown-background, #3c3c3c); }
+
+  /* Colored JWT in textarea via overlay */
+  .jwt-display {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    word-break: break-all;
+    padding: 10px 12px;
+    background: var(--vscode-input-background, #3c3c3c);
+    border: 1px solid var(--vscode-panel-border, #404040);
+    border-radius: var(--radius);
+    min-height: 60px;
+    position: relative;
+    user-select: text;
+  }
+  .jwt-display .seg-h { color: var(--jwt-red); }
+  .jwt-display .seg-p { color: var(--jwt-purple); }
+  .jwt-display .seg-s { color: var(--jwt-cyan); }
+  .jwt-display .seg-dot { color: var(--vscode-descriptionForeground, #888); }
+
+  /* ── Error banner ──────────────────────────────────────────────── */
+  .error-banner {
+    display: none;
+    background: rgba(244,71,71,0.12);
+    border: 1px solid rgba(244,71,71,0.4);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--danger);
+    align-items: center;
+    gap: 8px;
+  }
+  .error-banner.visible { display: flex; }
+
+  /* ── JSON display ──────────────────────────────────────────────── */
+  .json-block {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 12px 14px;
+    background: var(--vscode-editor-background, #1e1e1e);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
+    min-height: 40px;
+  }
+
+  .json-key   { color: #9cdcfe; }
+  .json-str   { color: #ce9178; }
+  .json-num   { color: #b5cea8; }
+  .json-bool  { color: #569cd6; }
+  .json-null  { color: #569cd6; }
+
+  /* ── Claims table ──────────────────────────────────────────────── */
+  .claims-table { width: 100%; border-collapse: collapse; }
+  .claims-table th {
+    text-align: left; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--vscode-descriptionForeground, #888);
+    padding: 6px 10px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #404040);
+  }
+  .claims-table td {
+    padding: 7px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border-bottom: 1px solid rgba(128,128,128,0.1);
+    vertical-align: top;
+  }
+  .claims-table tr:last-child td { border-bottom: none; }
+  .claims-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .claim-key { color: #9cdcfe; white-space: nowrap; }
+  .claim-label { font-size: 10px; color: var(--vscode-descriptionForeground, #888); font-family: inherit; display: block; }
+  .claim-value-raw { color: var(--vscode-editor-foreground, #d4d4d4); }
+  .claim-value-time { font-size: 11px; color: var(--vscode-descriptionForeground, #888); font-family: inherit; margin-top: 2px; }
+  .claim-expired { color: var(--danger); }
+  .claim-active  { color: var(--success); }
+  .claim-pending { color: var(--warning); }
+
+  /* ── Verify section ────────────────────────────────────────────── */
+  .verify-section {
+    margin-top: 16px;
+    border-top: 1px solid var(--vscode-panel-border, #404040);
+    padding-top: 16px;
+  }
+
+  .verify-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .verify-result {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+  .verify-result.visible { display: flex; }
+  .verify-result.valid   { background: rgba(76,175,130,0.12); border: 1px solid rgba(76,175,130,0.4); color: var(--success); }
+  .verify-result.invalid { background: rgba(244,71,71,0.12); border: 1px solid rgba(244,71,71,0.4); color: var(--danger); }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn {
+    padding: 7px 14px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn svg { flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #fff);
+  }
+  .btn-primary:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
+
+  .btn-secondary {
+    background: var(--vscode-button-secondaryBackground, #3c3c3c);
+    color: var(--vscode-button-secondaryForeground, #ccc);
+    border: 1px solid var(--vscode-panel-border, #555);
+  }
+  .btn-secondary:hover { background: var(--vscode-toolbar-hoverBackground, #4a4a4a); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--vscode-descriptionForeground, #888);
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .btn-ghost:hover { color: var(--vscode-editor-foreground, #d4d4d4); background: rgba(255,255,255,0.05); }
+
+  .btn-danger {
+    background: rgba(244,71,71,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(244,71,71,0.3);
+  }
+  .btn-danger:hover { background: rgba(244,71,71,0.25); }
+
+  .btn-success {
+    background: linear-gradient(135deg, #0e8a4e, #12b562);
+    color: #fff;
+    font-weight: 600;
+    padding: 9px 20px;
+    font-size: 13px;
+  }
+  .btn-success:hover { filter: brightness(1.1); }
+
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Section header row ─────────────────────────────────────────── */
+  .section-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Dot indicator ──────────────────────────────────────────────── */
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+  .dot-red    { background: var(--jwt-red); box-shadow: 0 0 6px var(--jwt-red); }
+  .dot-purple { background: var(--jwt-purple); box-shadow: 0 0 6px var(--jwt-purple); }
+  .dot-cyan   { background: var(--jwt-cyan); box-shadow: 0 0 6px var(--jwt-cyan); }
+
+  /* ── Builder page ───────────────────────────────────────────────── */
+  #builder-page { padding: 16px 20px; }
+
+  .form-row { margin-bottom: 12px; }
+  .form-row label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--vscode-descriptionForeground, #888);
+    margin-bottom: 5px;
+  }
+  .form-row label span.optional {
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--vscode-descriptionForeground, #666);
+    margin-left: 6px;
+  }
+
+  .form-hint {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #777);
+    margin-top: 4px;
+  }
+
+  .algo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .algo-chip {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: var(--vscode-input-background, #3c3c3c);
+    color: var(--vscode-editor-foreground, #ccc);
+    transition: all 0.15s;
+    font-family: var(--font-mono);
+    user-select: none;
+  }
+  .algo-chip:hover { border-color: var(--vscode-panel-border, #555); }
+  .algo-chip.hs.selected { background: rgba(251,1,91,0.18); color: var(--jwt-red); border-color: var(--jwt-red); }
+  .algo-chip.rs.selected { background: rgba(214,58,255,0.18); color: var(--jwt-purple); border-color: var(--jwt-purple); }
+  .algo-chip.es.selected { background: rgba(0,185,241,0.18); color: var(--jwt-cyan); border-color: var(--jwt-cyan); }
+
+  /* ── Custom claims table ────────────────────────────────────────── */
+  .custom-claims-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .custom-claims-table th {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 4px 6px 6px;
+    color: var(--vscode-descriptionForeground, #888);
+    text-align: left; border-bottom: 1px solid var(--vscode-panel-border, #404040);
+  }
+  .custom-claims-table th:nth-child(1) { width: 28%; }
+  .custom-claims-table th:nth-child(2) { width: 18%; }
+  .custom-claims-table th:nth-child(3) { width: auto; }
+  .custom-claims-table th:nth-child(4) { width: 40px; }
+  .custom-claims-table td { padding: 4px 4px 4px 6px; }
+  .custom-claims-table input, .custom-claims-table select {
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+  }
+
+  /* ── Token result ───────────────────────────────────────────────── */
+  .token-result {
+    display: none;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--vscode-panel-border, #404040);
+    animation: fadeIn 0.2s ease;
+  }
+  .token-result.visible { display: block; }
+
+  .token-encoded {
+    padding: 12px 14px;
+    background: var(--vscode-editor-background, #1e1e1e);
+    border: 1px solid var(--vscode-panel-border, #404040);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    word-break: break-all;
+    line-height: 1.8;
+    position: relative;
+  }
+
+  /* ── Toast ──────────────────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--vscode-notifications-background, #2d2d2d);
+    border: 1px solid var(--vscode-notificationsBorder, #555);
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--vscode-notifications-foreground, #d4d4d4);
+    opacity: 0;
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--vscode-panel-border, #404040);
+    margin: 16px 0;
+  }
+
+  /* ── Empty state ────────────────────────────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 10px;
+    color: var(--vscode-descriptionForeground, #666);
+    text-align: center;
+  }
+  .empty-state svg { opacity: 0.3; }
+  .empty-state p { font-size: 12px; max-width: 300px; }
+
+  /* ── Section spacing ────────────────────────────────────────────── */
+  .sections-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 760px) { .sections-grid { grid-template-columns: 1fr; } }
+
+  /* ── Scrollbar ──────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+  /* ── Expand toggle ──────────────────────────────────────────────── */
+  details summary {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    padding: 8px 0;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--vscode-descriptionForeground, #888);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details[open] summary .toggle-arrow { transform: rotate(90deg); }
+  .toggle-arrow { transition: transform 0.15s; }
+
+  /* ── Key type indicator ────────────────────────────────────────── */
+  .key-type-hint {
+    display: none;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #888);
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    border: 1px solid var(--vscode-panel-border, #404040);
+    line-height: 1.5;
+  }
+  .key-type-hint.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <div class="app-header">
+    <div class="app-header-top">
+      <div class="app-logo">
+        <div class="logo-icon">JWT</div>
+        <span class="app-title">JWT Tools</span>
+      </div>
+      <span class="app-subtitle">Decode · Verify · Create</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="decoder">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 4h12M2 8h8M2 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Decoder
+      </button>
+      <button class="tab-btn" data-tab="builder">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Builder
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Decoder Tab ─────────────────────────────────────────── -->
+  <div id="decoder-page" class="tab-content active">
+
+    <!-- Input -->
+    <div class="decoder-input-area">
+      <label>
+        <span>Encoded Token</span>
+        <span class="input-badge badge-encoded">Base64URL</span>
+        <span id="decode-status-badge" style="display:none"></span>
+        <button class="btn btn-ghost btn-sm" id="clear-btn" onclick="clearDecoder()" style="margin-left:auto">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8l4.5 4.5-1 1L7 9l-4.5 4.5-1-1L6 8 1.5 3.5l1-1L7 7l4.5-4.5 1 1L8 8z"/></svg>
+          Clear
+        </button>
+      </label>
+      <textarea id="token-input" class="jwt-textarea" placeholder="Paste your JWT token here...&#10;&#10;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" oninput="onTokenInput(this.value)"></textarea>
+    </div>
+
+    <!-- Error banner -->
+    <div class="error-banner" id="decode-error">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm0 6h1.5v1.5h-1.5V10.5z"/></svg>
+      <span id="decode-error-text"></span>
+    </div>
+
+    <!-- Colored encoded view -->
+    <div id="colored-jwt" class="jwt-display" style="display:none;margin-bottom:14px;"></div>
+
+    <!-- Header & Payload side by side -->
+    <div class="sections-grid" id="decoded-sections" style="display:none">
+      <!-- Header card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label"><span class="dot dot-red"></span> Header</div>
+          <button class="btn btn-ghost btn-sm" onclick="copyJSON('header-json')">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2h7l3 3v9H4V2zm7 0v3h3M7 7h4M7 10h4M7 13h2"/></svg>
+            Copy JSON
+          </button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div id="header-json" class="json-block"></div>
+        </div>
+      </div>
+
+      <!-- Payload card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label"><span class="dot dot-purple"></span> Payload</div>
+          <button class="btn btn-ghost btn-sm" onclick="copyJSON('payload-json')">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2h7l3 3v9H4V2zm7 0v3h3M7 7h4M7 10h4M7 13h2"/></svg>
+            Copy JSON
+          </button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div id="payload-json" class="json-block"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claims analysis -->
+    <div class="card" id="claims-card" style="display:none; margin-bottom:14px;">
+      <div class="card-header">
+        <div class="section-label"><span class="dot dot-purple"></span> Claims Analysis</div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="claims-table" id="claims-table">
+          <thead>
+            <tr>
+              <th style="width:120px">Claim</th>
+              <th>Value</th>
+              <th style="width:200px">Details</th>
+            </tr>
+          </thead>
+          <tbody id="claims-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Signature card -->
+    <div class="card" id="sig-card" style="display:none">
+      <div class="card-header">
+        <div class="section-label"><span class="dot dot-cyan"></span> Signature</div>
+        <span id="sig-status-badge" class="input-badge badge-gray">Unverified</span>
+      </div>
+      <div class="card-body">
+        <div style="margin-bottom:10px;font-family:var(--font-mono);font-size:11px;color:var(--vscode-descriptionForeground);word-break:break-all;" id="sig-value"></div>
+
+        <div class="verify-section">
+          <div class="section-hd" style="margin-bottom:8px">
+            <span class="section-label">Verify Signature</span>
+          </div>
+          <div class="verify-row">
+            <div>
+              <input type="password" id="verify-secret" placeholder="HMAC secret or PEM public key..." />
+              <div id="key-hint-text" class="key-type-hint"></div>
+            </div>
+            <div style="display:flex;gap:6px;flex-direction:column">
+              <button class="btn btn-secondary" onclick="toggleSecretVisibility()">
+                <svg id="eye-icon" width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3C4.5 3 1.5 6 0 8c1.5 2 4.5 5 8 5s6.5-3 8-5c-1.5-2-4.5-5-8-5zm0 8a3 3 0 110-6 3 3 0 010 6zm0-5a2 2 0 100 4 2 2 0 000-4z"/></svg>
+              </button>
+            </div>
+            <button class="btn btn-primary" onclick="verifyToken()">Verify</button>
+          </div>
+          <div class="verify-result" id="verify-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="10" width="40" height="28" rx="4" stroke="currentColor" stroke-width="2"/>
+        <path d="M14 20h20M14 24h14M14 28h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="36" cy="12" r="8" fill="var(--vscode-editor-background)" stroke="currentColor" stroke-width="2"/>
+        <path d="M33 12h6M36 9v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <p>Paste a JWT token above to decode its header, payload, and signature.</p>
+      <p style="color:var(--vscode-descriptionForeground);font-size:11px">Supports HS256/384/512 · RS256/384/512 · ES256/384/512</p>
+    </div>
+
+  </div><!-- /decoder-page -->
+
+  <!-- ── Builder Tab ──────────────────────────────────────────── -->
+  <div id="builder-page" class="tab-content">
+
+    <!-- Row 1: Algorithm + Standard claims -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header">
+        <div class="section-label">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 5v6l7 4 7-4V5L8 1zm0 2.2l5 2.9-.4.2L8 9 3.4 6.3 3 6.1l5-2.9zM2 7l5.5 3.2V14L2 11V7zm7.5 3.2L15 7v4l-5.5 3.2v-4z"/></svg>
+          Algorithm
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="algo-grid" id="algo-grid">
+          <span class="algo-chip hs selected" data-alg="HS256">HS256</span>
+          <span class="algo-chip hs" data-alg="HS384">HS384</span>
+          <span class="algo-chip hs" data-alg="HS512">HS512</span>
+          <span class="algo-chip rs" data-alg="RS256">RS256</span>
+          <span class="algo-chip rs" data-alg="RS384">RS384</span>
+          <span class="algo-chip rs" data-alg="RS512">RS512</span>
+          <span class="algo-chip es" data-alg="ES256">ES256</span>
+          <span class="algo-chip es" data-alg="ES384">ES384</span>
+          <span class="algo-chip es" data-alg="ES512">ES512</span>
+        </div>
+        <div id="alg-info" class="form-hint" style="margin-top:8px">
+          HMAC-SHA256 — symmetric, shared secret. Fast and widely supported.
+        </div>
+      </div>
+    </div>
+
+    <div class="sections-grid">
+      <!-- Standard claims -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label"><span class="dot dot-purple"></span> Standard Claims</div>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label>sub <span class="optional">subject</span></label>
+            <input type="text" id="b-sub" placeholder="user-1234" />
+          </div>
+          <div class="form-row">
+            <label>iss <span class="optional">issuer</span></label>
+            <input type="text" id="b-iss" placeholder="https://auth.example.com" />
+          </div>
+          <div class="form-row">
+            <label>aud <span class="optional">audience</span></label>
+            <input type="text" id="b-aud" placeholder="my-api" />
+          </div>
+          <div class="form-row">
+            <label>exp <span class="optional">expires in</span></label>
+            <input type="text" id="b-exp" placeholder="1h · 7d · 30m · 2026-12-31" />
+            <div class="form-hint">Shorthand: 30m, 2h, 7d, 1y — or ISO date — or Unix timestamp</div>
+          </div>
+          <div class="form-row">
+            <label>nbf <span class="optional">not before — optional</span></label>
+            <input type="text" id="b-nbf" placeholder="Leave empty for now" />
+          </div>
+          <div class="form-row" style="margin-bottom:0">
+            <label>iat <span class="optional">issued at</span></label>
+            <input type="text" id="b-iat" placeholder="auto (current time)" />
+            <div class="form-hint">Leave empty to use the current timestamp</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secret / Key -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label"><span class="dot dot-cyan"></span> Signing Key</div>
+          <span class="input-badge badge-warn" id="key-type-badge" style="font-size:10px">Secret</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <label id="secret-label">HMAC Secret</label>
+            <textarea id="b-secret" style="min-height:90px;resize:vertical" placeholder="your-256-bit-secret"></textarea>
+          </div>
+          <div id="key-hint-builder" class="key-type-hint"></div>
+          <div class="form-hint" style="margin-top:6px">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-1px;margin-right:4px"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm0 6h1.5v1.5h-1.5V10.5z"/></svg>
+            Key is never saved or transmitted. In-memory only.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom claims -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-header">
+        <div class="section-label">Custom Claims</div>
+        <button class="btn btn-ghost btn-sm" onclick="addCustomClaim()">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Add Claim
+        </button>
+      </div>
+      <div class="card-body" style="padding:10px 14px">
+        <table class="custom-claims-table" id="custom-claims-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="custom-claims-body">
+          </tbody>
+        </table>
+        <div id="no-custom-claims" style="text-align:center;padding:16px 0;font-size:12px;color:var(--vscode-descriptionForeground)">
+          No custom claims — click "Add Claim" to add one
+        </div>
+      </div>
+    </div>
+
+    <!-- Payload preview -->
+    <details style="margin-bottom:14px">
+      <summary>
+        <svg class="toggle-arrow" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>
+        Payload Preview
+      </summary>
+      <div class="card" style="margin-top:8px">
+        <div class="card-body" style="padding:0">
+          <div id="payload-preview" class="json-block" style="min-height:60px"></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Generate button -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+      <button class="btn btn-success" onclick="generateToken()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.7 2.3l-8 8L3.3 8l-1 1 3.4 3.4 9-9-1-1.1z"/></svg>
+        Generate Token
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="clearBuilder()">Clear Form</button>
+    </div>
+
+    <!-- Builder error banner -->
+    <div class="error-banner" id="builder-error" style="margin-top:12px">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 3.5h1.5v5h-1.5v-5zm0 6h1.5v1.5h-1.5V10.5z"/></svg>
+      <span id="builder-error-text"></span>
+    </div>
+
+    <!-- Generated token result -->
+    <div class="token-result" id="token-result">
+      <div class="section-hd" style="margin-bottom:8px">
+        <span class="section-label">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="color:var(--success)"><path d="M13.7 2.3l-8 8L3.3 8l-1 1 3.4 3.4 9-9-1-1.1z"/></svg>
+          Generated Token
+        </span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="copyToken()">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2h6l4 4v8H4V2zm6-0v4h4"/></svg>
+            Copy Token
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="sendToDecoder()">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 8h10M8 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            Decode
+          </button>
+        </div>
+      </div>
+      <div id="result-colored" class="token-encoded"></div>
+    </div>
+
+  </div><!-- /builder-page -->
+
+</div><!-- /app -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────── */
+/*  VS Code API bridge                                             */
+/* ─────────────────────────────────────────────────────────────── */
+const vscode = (typeof acquireVsCodeApi !== 'undefined') ? acquireVsCodeApi() : null;
+function postMessage(msg) {
+  if (vscode) {
+    vscode.postMessage(msg);
+  } else if (msg.command === 'copyToClipboard') {
+    // Fallback when running outside extension host
+    navigator.clipboard.writeText(String(msg.text || '')).then(() => showToast('Copied to clipboard'));
+  }
+}
+
+window.addEventListener('message', e => {
+  const msg = e.data;
+  switch (msg.command) {
+    case 'prefill':
+      switchTab('decoder');
+      document.getElementById('token-input').value = msg.token;
+      onTokenInput(msg.token);
+      break;
+    case 'decoded':
+      handleDecoded(msg.result);
+      break;
+    case 'verified':
+      handleVerified(msg.result);
+      break;
+    case 'signed':
+      handleSigned(msg.result);
+      break;
+    case 'copySuccess':
+      showToast('Copied to clipboard');
+      break;
+  }
+});
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Tab switching                                                   */
+/* ─────────────────────────────────────────────────────────────── */
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-content').forEach(p => p.classList.toggle('active', p.id === id + '-page'));
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => { switchTab(btn.dataset.tab); if (btn.dataset.tab === 'builder') updatePayloadPreview(); });
+});
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Utilities                                                       */
+/* ─────────────────────────────────────────────────────────────── */
+function b64urlDecode(str) {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '=='.substring(0, (4 - (base64.length % 4)) % 4);
+  try { return atob(padded); } catch { return null; }
+}
+
+function tryParseJson(str) {
+  try { return JSON.parse(str); } catch { return null; }
+}
+
+function formatTimestamp(unix) {
+  const d = new Date(unix * 1000);
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+}
+
+function relativeTime(unix) {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = unix - now;
+  const abs = Math.abs(diff);
+  const past = diff < 0;
+  let str;
+  if (abs < 60) str = abs + ' seconds';
+  else if (abs < 3600) str = Math.round(abs / 60) + ' minutes';
+  else if (abs < 86400) str = Math.round(abs / 3600) + ' hours';
+  else str = Math.round(abs / 86400) + ' days';
+  return past ? str + ' ago' : 'in ' + str;
+}
+
+function syntaxHighlight(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*(?:[eE][+-]?\d+)?)/g, match => {
+    let cls = 'json-num';
+    if (/^"/.test(match)) { cls = /:$/.test(match) ? 'json-key' : 'json-str'; }
+    else if (/true|false/.test(match)) { cls = 'json-bool'; }
+    else if (/null/.test(match)) { cls = 'json-null'; }
+    return `<span class="${cls}">${match}</span>`;
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function coloredJwt(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return `<span style="color:var(--jwt-red)">${escHtml(token)}</span>`;
+  return `<span class="seg-h">${escHtml(parts[0])}</span><span class="seg-dot">.</span><span class="seg-p">${escHtml(parts[1])}</span><span class="seg-dot">.</span><span class="seg-s">${escHtml(parts[2])}</span>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Web Crypto — client-side HS* sign/verify (no roundtrip)        */
+/* ─────────────────────────────────────────────────────────────── */
+const HMAC_HASH = { HS256: 'SHA-256', HS384: 'SHA-384', HS512: 'SHA-512' };
+
+function b64urlFromBytes(bytes) {
+  let bin = '';
+  new Uint8Array(bytes).forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+function b64urlFromStr(str) { return b64urlFromBytes(new TextEncoder().encode(str)); }
+
+async function signHmacLocal(payload, algorithm, secret) {
+  const hashName = HMAC_HASH[algorithm];
+  if (!hashName) return null;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret),
+    { name: 'HMAC', hash: hashName }, false, ['sign']);
+  const h   = b64urlFromStr(JSON.stringify({ alg: algorithm, typ: 'JWT' }));
+  const p   = b64urlFromStr(JSON.stringify(payload));
+  const inp = `${h}.${p}`;
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(inp));
+  return `${inp}.${b64urlFromBytes(sig)}`;
+}
+
+async function verifyHmacLocal(token, secret) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const header = tryParseJson(b64urlDecode(parts[0]));
+    if (!header || !HMAC_HASH[header.alg]) return null; // not HS* — let host handle it
+    const enc      = new TextEncoder();
+    const hashName = HMAC_HASH[header.alg];
+    const key = await crypto.subtle.importKey('raw', enc.encode(secret),
+      { name: 'HMAC', hash: hashName }, false, ['verify']);
+    // Correct base64url → base64 padding (same logic as b64urlDecode)
+    const b64 = parts[2].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '=='.substring(0, (4 - (b64.length % 4)) % 4);
+    const sigBin   = atob(padded);
+    const sigBytes = new Uint8Array(sigBin.length);
+    for (let i = 0; i < sigBin.length; i++) sigBytes[i] = sigBin.charCodeAt(i);
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(`${parts[0]}.${parts[1]}`));
+    return { valid };
+  } catch (err) {
+    return { valid: false, error: String(err) };
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Decoder                                                         */
+/* ─────────────────────────────────────────────────────────────── */
+let _decodeTimer;
+function onTokenInput(val) {
+  clearTimeout(_decodeTimer);
+  _decodeTimer = setTimeout(() => decodeToken(val), 150);
+}
+
+function decodeToken(token) {
+  token = token.trim();
+
+  // Hide everything
+  document.getElementById('decode-error').classList.remove('visible');
+  document.getElementById('colored-jwt').style.display = 'none';
+  document.getElementById('decoded-sections').style.display = 'none';
+  document.getElementById('claims-card').style.display = 'none';
+  document.getElementById('sig-card').style.display = 'none';
+  document.getElementById('empty-state').style.display = '';
+  document.getElementById('decode-status-badge').style.display = 'none';
+  document.getElementById('verify-result').classList.remove('visible');
+  document.getElementById('token-input').classList.remove('has-error');
+
+  if (!token) return;
+
+  document.getElementById('empty-state').style.display = 'none';
+
+  // Quick client-side decode for instant feedback
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    showDecodeError(`Invalid structure: expected 3 parts separated by dots, found ${parts.length}`);
+    return;
+  }
+
+  const headerRaw = b64urlDecode(parts[0]);
+  const payloadRaw = b64urlDecode(parts[1]);
+
+  if (!headerRaw || !payloadRaw) {
+    showDecodeError('Failed to base64url-decode token segments');
+    return;
+  }
+
+  const header = tryParseJson(headerRaw);
+  const payload = tryParseJson(payloadRaw);
+
+  if (!header) { showDecodeError('Header is not valid JSON'); return; }
+  if (!payload) { showDecodeError('Payload is not valid JSON'); return; }
+
+  // Colored raw token
+  const colored = document.getElementById('colored-jwt');
+  colored.innerHTML = coloredJwt(token);
+  colored.style.display = 'block';
+
+  // Header JSON
+  document.getElementById('header-json').innerHTML = syntaxHighlight(header);
+
+  // Payload JSON
+  document.getElementById('payload-json').innerHTML = syntaxHighlight(payload);
+
+  // Show sections
+  document.getElementById('decoded-sections').style.display = 'grid';
+
+  // Claims analysis
+  renderClaims(payload);
+
+  // Signature
+  document.getElementById('sig-value').textContent = parts[2];
+  document.getElementById('sig-card').style.display = 'block';
+
+  // Status badge
+  const badge = document.getElementById('decode-status-badge');
+  badge.className = 'input-badge badge-success';
+  badge.textContent = '✓ Valid Structure';
+  badge.style.display = '';
+
+  // Update key hint based on alg
+  updateKeyHint(header.alg, 'verify-section');
+}
+
+function showDecodeError(msg) {
+  const banner = document.getElementById('decode-error');
+  document.getElementById('decode-error-text').textContent = msg;
+  banner.classList.add('visible');
+  document.getElementById('token-input').classList.add('has-error');
+
+  const badge = document.getElementById('decode-status-badge');
+  badge.className = 'input-badge badge-error';
+  badge.textContent = '✗ Invalid';
+  badge.style.display = '';
+}
+
+function clearDecoder() {
+  document.getElementById('token-input').value = '';
+  onTokenInput('');
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Claims rendering                                                */
+/* ─────────────────────────────────────────────────────────────── */
+const CLAIM_LABELS = {
+  sub: 'Subject',    iss: 'Issuer',       aud: 'Audience',
+  exp: 'Expires',    iat: 'Issued At',    nbf: 'Not Before',
+  jti: 'JWT ID',     name: 'Name',        email: 'Email',
+  given_name: 'First Name', family_name: 'Last Name',
+  preferred_username: 'Username', picture: 'Avatar URL',
+  scope: 'Scope',    roles: 'Roles',      azp: 'Authorized Party',
+  nonce: 'Nonce',    at_hash: 'Access Token Hash',
+  c_hash: 'Code Hash', auth_time: 'Auth Time', acr: 'Auth Class Ref',
+  amr: 'Auth Methods', sid: 'Session ID',
+};
+
+const TIME_CLAIMS = new Set(['exp', 'iat', 'nbf', 'auth_time']);
+
+function renderClaims(payload) {
+  const tbody = document.getElementById('claims-body');
+  tbody.innerHTML = '';
+  const now = Math.floor(Date.now() / 1000);
+
+  for (const [key, value] of Object.entries(payload)) {
+    const tr = document.createElement('tr');
+    const label = CLAIM_LABELS[key] || '';
+    const isTime = TIME_CLAIMS.has(key) && typeof value === 'number';
+
+    let valueHtml = '';
+    let detailHtml = '';
+
+    if (isTime) {
+      const expired = key === 'exp' && value < now;
+      const pending = key === 'nbf' && value > now;
+      valueHtml = `<span class="claim-value-raw ${expired ? 'claim-expired' : key === 'exp' ? 'claim-active' : ''}">${value}</span>`;
+      detailHtml = `<span class="claim-value-time">${formatTimestamp(value)}</span>
+        <span class="claim-value-time ${expired ? 'claim-expired' : pending ? 'claim-pending' : 'claim-active'}">
+          ${expired ? '✗ Expired' : pending ? '⏳ Not Yet Valid' : '✓ Active'} · ${relativeTime(value)}
+        </span>`;
+    } else if (Array.isArray(value)) {
+      valueHtml = `<span class="claim-value-raw" style="color:var(--jwt-purple)">${escHtml(JSON.stringify(value))}</span>`;
+    } else if (typeof value === 'object' && value !== null) {
+      valueHtml = `<span class="claim-value-raw" style="color:var(--jwt-purple)">${escHtml(JSON.stringify(value))}</span>`;
+    } else if (typeof value === 'boolean') {
+      valueHtml = `<span class="claim-value-raw" style="color:#569cd6">${value}</span>`;
+    } else if (typeof value === 'number') {
+      valueHtml = `<span class="claim-value-raw" style="color:#b5cea8">${value}</span>`;
+    } else {
+      valueHtml = `<span class="claim-value-raw">${escHtml(String(value))}</span>`;
+    }
+
+    tr.innerHTML = `
+      <td><span class="claim-key">${escHtml(key)}</span>${label ? `<span class="claim-label">${label}</span>` : ''}</td>
+      <td style="font-family:var(--font-mono)">${valueHtml}</td>
+      <td>${detailHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('claims-card').style.display = Object.keys(payload).length ? '' : 'none';
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Signature verification                                          */
+/* ─────────────────────────────────────────────────────────────── */
+let _secretVisible = false;
+function toggleSecretVisibility() {
+  _secretVisible = !_secretVisible;
+  const inp = document.getElementById('verify-secret');
+  inp.type = _secretVisible ? 'text' : 'password';
+  document.getElementById('eye-icon').innerHTML = _secretVisible
+    ? '<path d="M8 3C4.5 3 1.5 6 0 8c1.5 2 4.5 5 8 5s6.5-3 8-5c-1.5-2-4.5-5-8-5zm0 8a3 3 0 110-6 3 3 0 010 6zm0-5a2 2 0 100 4 2 2 0 000-4z"/><path d="M2 2l12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'
+    : '<path d="M8 3C4.5 3 1.5 6 0 8c1.5 2 4.5 5 8 5s6.5-3 8-5c-1.5-2-4.5-5-8-5zm0 8a3 3 0 110-6 3 3 0 010 6zm0-5a2 2 0 100 4 2 2 0 000-4z"/>';
+}
+
+async function verifyToken() {
+  const token = document.getElementById('token-input').value.trim();
+  const secret = document.getElementById('verify-secret').value;
+  if (!token) return;
+  // Try client-side HMAC first (no roundtrip for HS*)
+  try {
+    const localResult = await verifyHmacLocal(token, secret);
+    if (localResult !== null) { handleVerified(localResult); return; }
+  } catch { /* fall through */ }
+  // RS* / ES* — delegate to extension host
+  postMessage({ command: 'verify', token, secret });
+}
+
+function handleVerified(result) {
+  const div = document.getElementById('verify-result');
+  const badge = document.getElementById('sig-status-badge');
+  div.classList.remove('valid', 'invalid');
+
+  if (result.valid) {
+    div.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M13.7 2.3l-8 8L3.3 8l-1 1 3.4 3.4 9-9-1-1.1z"/></svg> Signature is valid';
+    div.classList.add('valid');
+    badge.className = 'input-badge badge-success';
+    badge.textContent = '✓ Valid';
+  } else {
+    const msg = result.error ? ` — ${result.error}` : '';
+    div.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8l4.5 4.5-1 1L7 9l-4.5 4.5-1-1L6 8 1.5 3.5l1-1L7 7l4.5-4.5 1 1L8 8z"/></svg> Signature is invalid${escHtml(msg)}`;
+    div.classList.add('invalid');
+    badge.className = 'input-badge badge-error';
+    badge.textContent = '✗ Invalid';
+  }
+  div.classList.add('visible');
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function handleDecoded(result) {
+  // This is called from extension host decode result — used for prefill
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Copy helpers                                                    */
+/* ─────────────────────────────────────────────────────────────── */
+function copyJSON(elId) {
+  const el = document.getElementById(elId);
+  const text = el.innerText;
+  postMessage({ command: 'copyToClipboard', text });
+}
+
+function copyToken() {
+  const el = document.getElementById('result-colored');
+  postMessage({ command: 'copyToClipboard', text: el.dataset.raw });
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Builder                                                         */
+/* ─────────────────────────────────────────────────────────────── */
+let selectedAlg = 'HS256';
+let customClaims = [];
+
+const ALG_INFO = {
+  HS256: 'HMAC-SHA256 — symmetric, shared secret. Fast and widely supported.',
+  HS384: 'HMAC-SHA384 — symmetric, shared secret. Stronger hash than HS256.',
+  HS512: 'HMAC-SHA512 — symmetric, shared secret. Strongest HMAC variant.',
+  RS256: 'RSA-SHA256 — asymmetric, RSA key pair. Widely used in OAuth/OIDC.',
+  RS384: 'RSA-SHA384 — asymmetric, RSA key pair. Stronger hash variant.',
+  RS512: 'RSA-SHA512 — asymmetric, RSA key pair. Strongest RSA variant.',
+  ES256: 'ECDSA-SHA256 (P-256) — asymmetric, elliptic curve. Compact signatures.',
+  ES384: 'ECDSA-SHA384 (P-384) — asymmetric, elliptic curve. Higher security.',
+  ES512: 'ECDSA-SHA512 (P-521) — asymmetric, elliptic curve. Highest security.',
+};
+
+document.getElementById('algo-grid').addEventListener('click', e => {
+  const chip = e.target.closest('.algo-chip');
+  if (!chip) return;
+  document.querySelectorAll('.algo-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  selectedAlg = chip.dataset.alg;
+  document.getElementById('alg-info').textContent = ALG_INFO[selectedAlg] || '';
+  updateKeyHint(selectedAlg, 'builder');
+  updatePayloadPreview();
+});
+
+function updateKeyHint(alg, ctx) {
+  const isHmac = alg && alg.startsWith('HS');
+  const isRsa  = alg && alg.startsWith('RS');
+  const isEc   = alg && alg.startsWith('ES');
+
+  if (ctx === 'builder') {
+    const label = document.getElementById('secret-label');
+    const badge = document.getElementById('key-type-badge');
+    const hint  = document.getElementById('key-hint-builder');
+    if (isHmac) {
+      label.textContent = 'HMAC Secret';
+      badge.textContent = 'Secret';
+      badge.className = 'input-badge badge-warn';
+      document.getElementById('b-secret').placeholder = 'your-secret-key';
+      hint.className = 'key-type-hint';
+    } else if (isRsa) {
+      label.textContent = 'RSA Private Key (PEM)';
+      badge.textContent = 'Private Key';
+      badge.className = 'input-badge badge-error';
+      document.getElementById('b-secret').placeholder = '-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----';
+      hint.textContent = 'Paste your RSA private key in PEM format.';
+      hint.className = 'key-type-hint visible';
+    } else if (isEc) {
+      label.textContent = 'EC Private Key (PEM)';
+      badge.textContent = 'EC Key';
+      badge.className = 'input-badge badge-cyan';
+      document.getElementById('b-secret').placeholder = '-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----';
+      hint.textContent = 'Paste your EC private key in PEM format.';
+      hint.className = 'key-type-hint visible';
+    }
+  }
+
+  if (ctx === 'verify-section') {
+    const hint = document.getElementById('key-hint-text');
+    if (!alg) { hint.className = 'key-type-hint'; return; }
+    if (isHmac) {
+      hint.className = 'key-type-hint';
+    } else if (isRsa) {
+      hint.textContent = 'Algorithm is RS-family — paste your RSA public key (PEM) to verify.';
+      hint.className = 'key-type-hint visible';
+    } else if (isEc) {
+      hint.textContent = 'Algorithm is ES-family — paste your EC public key (PEM) to verify.';
+      hint.className = 'key-type-hint visible';
+    }
+    document.getElementById('verify-secret').placeholder =
+      isHmac ? 'HMAC secret' : isRsa ? '-----BEGIN PUBLIC KEY-----...' : '-----BEGIN PUBLIC KEY-----...';
+  }
+}
+
+function parseExpiry(val) {
+  if (!val || !val.trim()) return null;
+  val = val.trim();
+
+  // Unix timestamp
+  if (/^\d{10,}$/.test(val)) return parseInt(val);
+
+  // Shorthand: 1h 30m 7d 1y
+  const match = val.match(/^(\d+(?:\.\d+)?)\s*(s|m|h|d|w|y)$/i);
+  if (match) {
+    const n = parseFloat(match[1]);
+    const u = match[2].toLowerCase();
+    const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800, y: 31536000 };
+    return Math.floor(Date.now() / 1000) + Math.round(n * (mult[u] || 1));
+  }
+
+  // ISO or natural date string
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return Math.floor(d.getTime() / 1000);
+
+  return null;
+}
+
+function buildPayload() {
+  const payload = {};
+
+  const iat = document.getElementById('b-iat').value.trim();
+  payload.iat = iat ? parseExpiry(iat) ?? Math.floor(Date.now() / 1000) : Math.floor(Date.now() / 1000);
+
+  const sub = document.getElementById('b-sub').value.trim();
+  const iss = document.getElementById('b-iss').value.trim();
+  const aud = document.getElementById('b-aud').value.trim();
+  const expRaw = document.getElementById('b-exp').value.trim();
+  const nbfRaw = document.getElementById('b-nbf').value.trim();
+
+  if (sub) payload.sub = sub;
+  if (iss) payload.iss = iss;
+  if (aud) payload.aud = aud;
+
+  if (expRaw) {
+    const exp = parseExpiry(expRaw);
+    if (exp !== null) payload.exp = exp;
+  }
+  if (nbfRaw) {
+    const nbf = parseExpiry(nbfRaw);
+    if (nbf !== null) payload.nbf = nbf;
+  }
+
+  // Custom claims
+  customClaims.forEach(({ key, type, value }) => {
+    if (!key) return;
+    switch (type) {
+      case 'number':  payload[key] = parseFloat(value) || 0; break;
+      case 'boolean': payload[key] = value === 'true'; break;
+      case 'json':    try { payload[key] = JSON.parse(value); } catch { payload[key] = value; } break;
+      default:        payload[key] = value;
+    }
+  });
+
+  return payload;
+}
+
+function updatePayloadPreview() {
+  try {
+    const p = buildPayload();
+    document.getElementById('payload-preview').innerHTML = syntaxHighlight(p);
+  } catch {}
+}
+
+document.querySelectorAll('#builder-page input, #builder-page textarea').forEach(el => {
+  el.addEventListener('input', updatePayloadPreview);
+});
+
+function addCustomClaim() {
+  const id = Date.now();
+  customClaims.push({ id, key: '', type: 'string', value: '' });
+  renderCustomClaims();
+}
+
+function removeCustomClaim(id) {
+  customClaims = customClaims.filter(c => c.id !== id);
+  renderCustomClaims();
+  updatePayloadPreview();
+}
+
+function renderCustomClaims() {
+  const tbody = document.getElementById('custom-claims-body');
+  const noMsg = document.getElementById('no-custom-claims');
+  tbody.innerHTML = '';
+  noMsg.style.display = customClaims.length ? 'none' : '';
+
+  customClaims.forEach(claim => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" placeholder="claim_key" value="${escHtml(claim.key)}" onchange="updateClaim(${claim.id},'key',this.value)" oninput="updateClaim(${claim.id},'key',this.value);updatePayloadPreview()" /></td>
+      <td>
+        <select onchange="updateClaim(${claim.id},'type',this.value)">
+          <option value="string"  ${claim.type==='string'?'selected':''}>String</option>
+          <option value="number"  ${claim.type==='number'?'selected':''}>Number</option>
+          <option value="boolean" ${claim.type==='boolean'?'selected':''}>Boolean</option>
+          <option value="json"    ${claim.type==='json'?'selected':''}>JSON</option>
+        </select>
+      </td>
+      <td>
+        ${claim.type === 'boolean'
+          ? `<select onchange="updateClaim(${claim.id},'value',this.value)"><option value="true" ${claim.value==='true'?'selected':''}>true</option><option value="false" ${claim.value==='false'?'selected':''}>false</option></select>`
+          : `<input type="text" placeholder="value" value="${escHtml(claim.value)}" oninput="updateClaim(${claim.id},'value',this.value);updatePayloadPreview()" />`
+        }
+      </td>
+      <td><button class="btn btn-ghost btn-sm btn-danger" onclick="removeCustomClaim(${claim.id})" style="padding:4px 6px">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8l4.5 4.5-1 1L7 9l-4.5 4.5-1-1L6 8 1.5 3.5l1-1L7 7l4.5-4.5 1 1L8 8z"/></svg>
+      </button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateClaim(id, field, val) {
+  const c = customClaims.find(c => c.id === id);
+  if (c) c[field] = val;
+}
+
+async function generateToken() {
+  const secret = document.getElementById('b-secret').value;
+  const errBanner = document.getElementById('builder-error');
+  errBanner.classList.remove('visible');
+
+  if (!secret.trim()) {
+    document.getElementById('builder-error-text').textContent = 'Signing key / secret is required.';
+    errBanner.classList.add('visible');
+    return;
+  }
+
+  const payload = buildPayload();
+
+  // HS* can be signed entirely in-browser — no extension host roundtrip needed
+  if (selectedAlg.startsWith('HS')) {
+    try {
+      const token = await signHmacLocal(payload, selectedAlg, secret);
+      if (token) { handleSigned({ success: true, token }); return; }
+    } catch (err) {
+      handleSigned({ success: false, error: String(err) });
+      return;
+    }
+  }
+
+  // RS* / ES* require the native crypto module in the extension host
+  postMessage({ command: 'sign', payload: JSON.stringify(payload), algorithm: selectedAlg, secret });
+}
+
+function handleSigned(result) {
+  const errBanner = document.getElementById('builder-error');
+  if (!result.success) {
+    document.getElementById('builder-error-text').textContent = result.error || 'Signing failed';
+    errBanner.classList.add('visible');
+    document.getElementById('token-result').classList.remove('visible');
+    return;
+  }
+
+  errBanner.classList.remove('visible');
+  const resultDiv = document.getElementById('result-colored');
+  resultDiv.innerHTML = coloredJwt(result.token);
+  resultDiv.dataset.raw = result.token;
+  document.getElementById('token-result').classList.add('visible');
+  document.getElementById('token-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function sendToDecoder() {
+  const raw = document.getElementById('result-colored').dataset.raw;
+  if (!raw) return;
+  switchTab('decoder');
+  document.getElementById('token-input').value = raw;
+  onTokenInput(raw);
+}
+
+function clearBuilder() {
+  ['b-sub','b-iss','b-aud','b-exp','b-nbf','b-iat','b-secret'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  customClaims = [];
+  renderCustomClaims();
+  document.getElementById('token-result').classList.remove('visible');
+  document.getElementById('builder-error').classList.remove('visible');
+  updatePayloadPreview();
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Init                                                            */
+/* ─────────────────────────────────────────────────────────────── */
+updateKeyHint('HS256', 'builder');
+updatePayloadPreview();
+</script>
+</body>
+</html>
