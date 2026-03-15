@@ -28,6 +28,8 @@ Paste a JWT into the panel and immediately view:
 
 The extension is designed to make token contents easier to inspect during development, especially when you need to confirm claim values such as `iss`, `sub`, `aud`, `iat`, `nbf`, and `exp`.
 
+![JWT decoder and validation preview](images/decoder.png)
+
 ### Verify Signatures
 
 JWT Tools can verify token signatures using the selected token algorithm and the secret or key you provide. This helps confirm whether a token was signed with the expected material before you continue debugging downstream authentication issues.
@@ -41,6 +43,8 @@ Supported algorithm families include:
 ### Build Tokens
 
 The extension also includes a builder workflow for generating signed JWTs inside VS Code. You can provide payload JSON, choose an algorithm, add optional header values, and generate a token for local testing or manual API calls.
+
+![JWT builder preview](images/builder.png)
 
 ## Commands
 
